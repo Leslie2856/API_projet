@@ -102,21 +102,21 @@ async def get_countries():
     df = getAllCountries(mycollection)
     return JSONResponse(content=df.to_dict(orient="records"))
 
-# Documentation de l'endpoint get_country
+# Endpoint pour récupérer les informations d'un pays par son nom
 @country_api.get("/country/{name}", response_model=dict, tags=["Countries"])
-async def get_country(name: str):
+async def get_country_by_name(name: str):
     """
-    Récupère les informations d'un pays depuis la collection MongoDB et les renvoie au format JSON.
+    Récupère les informations d'un pays depuis la collection MongoDB par son nom.
 
     Parameters:
     - name (str): Le nom du pays à récupérer.
 
     Returns:
-    JSONResponse: Un objet JSONResponse contenant les données du pays au format JSON.
+    dict: Un dictionnaire représentant les informations du pays.
     """
     df = getCountry(name, mycollection)
-    if df is not None: 
-        return JSONResponse(content=df.to_dict(orient="records"))
+    if df is not None:
+        return df.to_dict(orient="records")[0]
     else:
         raise HTTPException(status_code=404, detail="Country not found")
 
@@ -204,3 +204,98 @@ async def get_countries_by_trust(threshold: float):
     return countries
 
 
+# Endpoint pour récupérer les pays avec un score de bonheur supérieur à un seuil spécifié
+@country_api.get("/countries_happiness_above/{threshold}", response_model=List[Country], tags=["Countries"])
+async def get_countries_happiness_above(threshold: float):
+    """
+    Récupère les pays avec un score de bonheur supérieur à un seuil donné.
+
+    Parameters:
+    - threshold (float): Le seuil de score de bonheur à comparer.
+
+    Returns:
+    List[Country]: Une liste de pays avec un score de bonheur supérieur au seuil spécifié.
+    """
+    countries = list(mycollection.find({"Happiness_Score": {"$gt": threshold}}))
+    return countries
+
+# Endpoint pour récupérer les pays dont le score de bonheur est compris entre h1 et h2
+@country_api.get("/countries_happiness/{h1}/{h2}", response_model=List[dict], tags=["Countries"])
+async def get_countries_by_happiness(h1: float, h2: float):
+    """
+    Récupère les pays dont le score de bonheur est compris entre deux valeurs spécifiques.
+
+    Parameters:
+    - h1 (float): Valeur inférieure du score de bonheur.
+    - h2 (float): Valeur supérieure du score de bonheur.
+
+    Returns:
+    List[dict]: Une liste de dictionnaires représentant les pays avec le score de bonheur dans la plage spécifiée.
+    """
+    df = getCountriesHappinessH1H2(h1, h2, mycollection)
+    return df.to_dict(orient="records")
+
+# Endpoint pour récupérer la moyenne mondiale des scores de bonheur
+@country_api.get("/world_average_happiness/", response_model=dict, tags=["Countries"])
+async def get_world_average_happiness():
+    """
+    Calcule la moyenne mondiale des scores de bonheur des pays.
+
+    Returns:
+    dict: Un dictionnaire représentant la moyenne mondiale des scores de bonheur.
+    """
+    df = getWorldAverageHappiness(mycollection)
+    if not df.empty:
+        return df.to_dict(orient="records")[0]
+    else:
+        return {}
+
+# Endpoint pour le pays avec le score de bonheur le plus bas:
+@country_api.get("/least_happy_country", response_model=List[Country], tags=["Countries"])
+async def get_least_happy_country():
+    """
+    Récupère le pays avec le score de bonheur le plus bas.
+
+    Returns:
+    List[Country]: Une liste contenant le pays avec le score de bonheur le plus bas.
+    """
+    df = getLeastHappyCountry(mycollection)
+    return df.to_dict(orient="records")
+
+#Endpoint pour le pays avec le score de bonheur le plus élevé
+@country_api.get("/most_happy_country", response_model=List[Country], tags=["Countries"])
+async def get_most_happy_country():
+    """
+    Récupère le pays avec le score de bonheur le plus élevé.
+
+    Returns:
+    List[Country]: Une liste contenant le pays avec le score de bonheur le plus élevé.
+    """
+    df = getMostHappyCountry(mycollection)
+    return df.to_dict(orient="records")
+
+
+#Endpoint pour le nombre de pays dont le score de bonheur est supérieur à la moyenne:
+@country_api.get("/countries_happiness_above_avg", response_model=dict, tags=["Countries"])
+async def get_countries_happiness_above_avg():
+    """
+    Récupère le nombre de pays dont le score de bonheur est supérieur à la moyenne mondiale.
+
+    Returns:
+    dict: Un dictionnaire contenant le nombre de pays et la moyenne mondiale.
+    """
+    nb_countries, avg = getNbCountriesHappinessSupAvg(mycollection)
+    return {"nbCountries": nb_countries, "avgHappinessScore": avg}
+
+
+#Endpoint pour le nombre de pays dont le score de bonheur est inférieur à la moyenne:
+@country_api.get("/countries_happiness_below_avg", response_model=dict, tags=["Countries"])
+async def get_countries_happiness_below_avg():
+    """
+    Récupère le nombre de pays dont le score de bonheur est inférieur à la moyenne mondiale.
+
+    Returns:
+    dict: Un dictionnaire contenant le nombre de pays et la moyenne mondiale.
+    """
+    nb_countries, avg = getNbCountriesHappinessInfAvg(mycollection)
+    return {"nbCountries": nb_countries, "avgHappinessScore": avg}
